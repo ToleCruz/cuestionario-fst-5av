@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cuestionario · Formación Socioemocional y Tutoría · 5AV</title>
+<style>
+  :root{--g:#7a1f3d;--g2:#b23a5e;--ok:#1e8e3e;--bad:#c62828;--bg:#f6f1ee;--card:#fff;--tx:#2b2b2b}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+  header{background:linear-gradient(135deg,var(--g),var(--g2));color:#fff;padding:22px 16px;text-align:center}
+  header h1{margin:0;font-size:1.35rem}
+  header p{margin:6px 0 0;opacity:.9;font-size:.95rem}
+  main{max-width:720px;margin:24px auto;padding:0 14px}
+  .card{background:var(--card);border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.08);padding:24px;margin-bottom:18px}
+  label{display:block;font-weight:600;margin:12px 0 6px}
+  input,select{width:100%;padding:11px;border:1.5px solid #ccc;border-radius:9px;font-size:1rem}
+  input:focus,select:focus{outline:none;border-color:var(--g2)}
+  button{background:var(--g);color:#fff;border:none;border-radius:9px;padding:12px 22px;font-size:1rem;font-weight:600;cursor:pointer;margin-top:16px}
+  button:hover{background:var(--g2)}
+  button:disabled{background:#aaa;cursor:not-allowed}
+  .hidden{display:none !important}
+  .bar{height:10px;background:#e5dcd8;border-radius:6px;overflow:hidden;margin-bottom:8px}
+  .bar div{height:100%;background:var(--g2);width:0;transition:width .4s}
+  .meta{display:flex;justify-content:space-between;font-size:.9rem;color:#666;margin-bottom:14px}
+  .q{font-size:1.12rem;font-weight:600;margin:4px 0 16px;line-height:1.4}
+  .opt{display:block;width:100%;text-align:left;background:#faf7f6;color:var(--tx);border:1.5px solid #ddd;margin:8px 0 0;font-weight:500}
+  .opt:hover{background:#f3e7ea;border-color:var(--g2)}
+  .opt.ok{background:#e6f4ea;border-color:var(--ok);color:var(--ok)}
+  .opt.bad{background:#fdecea;border-color:var(--bad);color:var(--bad)}
+  .msg{margin-top:14px;padding:12px;border-radius:9px;font-size:.95rem;line-height:1.4}
+  .msg.ok{background:#e6f4ea;color:#14532d}
+  .msg.bad{background:#fdecea;color:#7f1d1d}
+  .big{font-size:3rem;font-weight:800;color:var(--g);text-align:center;margin:10px 0}
+  .center{text-align:center}
+  .err{color:var(--bad);font-size:.9rem;margin-top:8px}
+  footer{text-align:center;font-size:.8rem;color:#888;padding:18px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Formación Socioemocional y Tutoría</h1>
+  <p>CBTis No. 187 · Grupo 5AV · Técnico en Programación</p>
+</header>
+
+<main>
+  <!-- REGISTRO -->
+  <section id="registro" class="card">
+    <h2 style="margin-top:0">Inicia sesión</h2>
+    <p>Entra con tu <b>cuenta de correo de Google</b>. Después elige tu nombre de la lista del grupo.</p>
+    <p><b>Tienes 3 intentos por pregunta</b>: 10 puntos si aciertas al primero, 6 al segundo y 3 al tercero. Si fallas los 3, verás la respuesta correcta y obtendrás 0 puntos en esa pregunta. Solo puedes enviar el cuestionario <b>una vez</b>.</p>
+    <div id="btnGoogle" style="display:flex;justify-content:center;margin:18px 0"></div>
+    <div id="pasoAlumno" class="hidden">
+      <div class="msg ok" id="sesion"></div>
+      <label for="alumnoSel">Selecciona tu nombre</label>
+      <select id="alumnoSel"><option value="">— Elige tu nombre —</option></select>
+      <label>Número de control</label>
+      <input id="control" readonly placeholder="Se llena automáticamente">
+      <button id="btnIniciar">Comenzar cuestionario</button>
+    </div>
+    <div id="errReg" class="err"></div>
+  </section>
+
+  <!-- PREGUNTAS -->
+  <section id="quiz" class="card hidden">
+    <div class="bar"><div id="progreso"></div></div>
+    <div class="meta"><span id="numPreg"></span><span id="puntos">Puntos: 0</span></div>
+    <div id="pregunta" class="q"></div>
+    <div id="opciones"></div>
+    <div id="retro" class="msg hidden"></div>
+    <button id="btnSig" class="hidden">Siguiente ➜</button>
+  </section>
+
+  <!-- RESULTADO -->
+  <section id="final" class="card hidden center">
+    <h2 style="margin-top:0">¡Terminaste!</h2>
+    <p id="resNombre"></p>
+    <div class="big" id="resCalif"></div>
+    <p id="resDetalle"></p>
+    <button id="btnEnviar">📤 Enviar al docente</button>
+    <div id="estadoEnvio" class="msg hidden"></div>
+    <div id="reLogin" class="hidden" style="display:flex;justify-content:center;margin-top:12px"></div>
+    <button id="btnConstancia" class="hidden">🎓 Descargar constancia</button>
+  </section>
+</main>
+
+<footer>Docente: M.T.I. Félix Tolentino Cruz · CBTis No. 187 · <a href="privacidad.html">Aviso de privacidad</a></footer>
+
+<canvas id="lienzo" width="1600" height="1130" class="hidden"></canvas>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+/* ====== CONFIGURACIÓN ====== */
+// Pega aquí la URL de tu Apps Script (termina en /exec)
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbySF-cFnC9SaGUG1bj0pKp4wstyjruXr15L4cnaT6kz7O5syxC4oYUdI6lSJxhJm0iw6Q/exec";
+// Pega aquí tu ID de cliente OAuth de Google (termina en .apps.googleusercontent.com)
+const CLIENT_ID = "356721029050-m5ckg3gftddarim9hhsspmt4sooh3kmo.apps.googleusercontent.com";
+const MATERIA = "Formación Socioemocional y Tutoría";
+const DOCENTE = "M.T.I. Félix Tolentino Cruz";
+const ACTIVIDAD = "Cuestionario de repaso: Empatía, emociones y convivencia";
+// Puntos por pregunta según el intento en que acierta
+const PUNTOS_INTENTO = [10, 6, 3];   // máximo 3 intentos por pregunta
+
+const PREGUNTAS = [
+  // 1.1 Empatía
+  {p:"Según la lección 1.1, ¿qué es la empatía?",
+   o:["La capacidad para comprender los sentimientos y emociones de los demás sin juzgarlos, y ser capaz de experimentarlos","Estar siempre de acuerdo con lo que dicen los demás","Sentir lástima por quien tiene problemas","Hacer lo que los demás me pidan para caerles bien"],
+   c:0, e:"La empatía es comprender los sentimientos y emociones de otras personas sin juzgarlas, y poder experimentarlos uno mismo."},
+  {p:"Tu mejor amiga Rocío se muda a Nuevo León: está feliz por el nuevo trabajo de su papá, pero triste por dejarte. ¿Cuál es la respuesta CON empatía?",
+   o:["\"No se vale, ya teníamos planes; ni modo, buscaré nuevos amigos\"","\"Me da gusto por tu papá y por tu familia. Yo también te voy a extrañar; sigamos en contacto\"","\"Pues ni modo, así es la vida\"","\"Tu papá solo piensa en él\""],
+   c:1, e:"Responder con empatía es reconocer lo que siente la otra persona (alegría y tristeza) y acompañarla sin juzgar."},
+  {p:"¿Cuál de los siguientes es un BENEFICIO de practicar la empatía?",
+   o:["Ganar todas las discusiones","Mejorar las relaciones interpersonales y la habilidad para resolver conflictos","Evitar convivir con personas diferentes","Que los demás hagan lo que yo quiero"],
+   c:1, e:"Entre sus beneficios están mejores relaciones, salud física y mental, resolver conflictos, trabajo colaborativo, tolerancia e inclusión."},
+  // 1.3 Obstáculos
+  {p:"En la lección 1.3 \"Obstáculos a la empatía\", ¿cuál de estos es un obstáculo que nos impide ser empáticos?",
+   o:["Escuchar con atención","Juzgar sin conocer a la persona","Preguntar cómo se siente el otro","Ponerse en el lugar del otro"],
+   c:1, e:"Juzgar sin conocer, no poner atención o dejarnos llevar por nuestro estado de ánimo son obstáculos para la empatía."},
+  {p:"¿Cuál de estas frases es una CREENCIA o PREJUICIO que dificulta sentir empatía?",
+   o:["\"Todos podemos aprender de nuestros errores\"","\"Yo siempre tengo la razón\"","\"Cada persona tiene su propia historia\"","\"Me interesa saber cómo te sientes\""],
+   c:1, e:"Creencias como \"yo siempre tengo la razón\" o \"los de otra escuela son problemáticos\" nos impiden comprender a los demás."},
+  // 1.4 Humanidad compartida
+  {p:"¿Qué es la HUMANIDAD COMPARTIDA?",
+   o:["Que todos debemos pensar igual","Reconocer que, a pesar de nuestras diferencias, todas las personas tenemos emociones, necesidades y el deseo de estar bien","Compartir nuestras pertenencias con todos","Pertenecer al mismo grupo escolar"],
+   c:1, e:"Es reconocer lo que nos une como seres humanos: sentir, sufrir, querer estar bien y ser aceptados."},
+  {p:"Metafóricamente, ¿qué significa \"Las etiquetas son para las latas\"?",
+   o:["Que debemos reciclar las latas","Que las personas no deben reducirse a un apodo, prejuicio o estereotipo","Que hay que leer la información nutrimental","Que cada quien debe usar ropa de marca"],
+   c:1, e:"Las personas somos mucho más que una etiqueta; etiquetar impide conocer quién es realmente alguien."},
+  {p:"Al imaginar que le roban el celular a ti, a tu mejor amigo, a alguien de otro salón y a alguien que te cae mal, ¿qué conclusión se busca?",
+   o:["Que solo importa lo que me pasa a mí","Que a quien me cae mal no le afectaría","Que cualquier persona sentiría tristeza, miedo o enojo, sea cercana o no a mí","Que hay que dejar el celular en casa"],
+   c:2, e:"La empatía no depende de si alguien nos agrada: todas las personas sentiríamos algo parecido."},
+  {p:"\"Esta persona, al igual que yo, tiene emociones y quiere sentirse bien.\" ¿Para qué sirve escribir similitudes con alguien muy diferente a ti?",
+   o:["Para demostrar que soy superior","Para desarrollar empatía al descubrir lo que tenemos en común","Para criticar sus diferencias","Para convencerla de que piense como yo"],
+   c:1, e:"Buscar similitudes con quien nos cuesta sentir empatía nos ayuda a verla como una persona igual que nosotros."},
+  // 1.5 POCA
+  {p:"En la lección 1.5, ¿qué significan las letras de la herramienta POCA?",
+   o:["Piensa, Opina, Critica, Aconseja","Para, Observa, Conecta, Actúa","Pregunta, Ordena, Corrige, Avanza","Perdona, Olvida, Calla, Acepta"],
+   c:1, e:"POCA: Para por un momento, Observa a la otra persona, Conecta con su emoción y Actúa con sensibilidad, respeto y compasión."},
+  {p:"En la herramienta POCA, el paso \"Conecta\" consiste en…",
+   o:["Conectarse a internet para buscar consejos","Recordar alguna situación en la que hayas vivido una emoción similar a la de la otra persona","Contarle a otros lo que le pasa","Darle la razón en todo"],
+   c:1, e:"Conectar es recordar cuándo sentimos algo parecido para entender, a nivel emocional, cómo se siente la otra persona."},
+  {p:"Según el paso \"Actúa\" de POCA, a veces la otra persona sólo necesita…",
+   o:["Que le resuelvan todos sus problemas","Ser escuchada","Que la regañen","Que la dejen sola siempre"],
+   c:1, e:"Actuar con sensibilidad, respeto y compasión incluye entender que muchas veces basta con escuchar."},
+  {p:"Para conectar con las emociones de otras personas, primero es importante desarrollar…",
+   o:["Nuestra conciencia emocional: identificar y entender nuestras propias emociones","Nuestra fuerza física","Nuestra popularidad","Nuestra memoria para los exámenes"],
+   c:0, e:"Sólo a partir de identificar y entender nuestras propias emociones podemos conectar con las de otras personas."},
+  // Identificar emociones en otros
+  {p:"Para identificar las emociones de otra persona, ¿en qué tres señales nos fijamos principalmente?",
+   o:["Tono de voz, expresiones faciales y postura corporal","Su ropa, su peinado y sus zapatos","Sus calificaciones, su edad y su grupo","Lo que publica en redes sociales"],
+   c:0, e:"La emoción se nota en cómo habla (tono de voz), en su rostro (expresiones faciales) y en su cuerpo (postura)."},
+  {p:"Llegas al salón y tu mejor amigo/a está ENOJADO/A. ¿Qué características físicas te lo indicarían?",
+   o:["Sonrisa amplia y mirada relajada","Ceño fruncido, mandíbula tensa, voz fuerte o cortante y brazos cruzados","Ojos muy abiertos por sorpresa","Hombros relajados y voz suave"],
+   c:1, e:"El enojo se muestra con el ceño fruncido, tensión en cara y cuerpo, brazos cruzados o puños y voz elevada o seca."},
+  {p:"Un compañero/a está FRUSTRADO/A. ¿Cuál señal es más característica?",
+   o:["Suspira, resopla, se toca la cabeza o la cara y habla con desánimo","Ríe a carcajadas","Baila y canta","Está totalmente relajado"],
+   c:0, e:"La frustración aparece cuando algo no sale como esperamos: suspiros, resoplidos, gestos de cansancio y voz desanimada."},
+  // Act 8 escalera
+  {p:"En la Actividad 8 \"La escalera de las emociones\", ¿qué sucede conforme sube la intensidad de una emoción?",
+   o:["Es más fácil controlarla","Cuesta más regularla; al inicio podemos pensar con claridad, pero puede llegar un punto en que perdemos el control","La emoción desaparece sola","No cambia nada en nuestra conducta"],
+   c:1, e:"Nuestras reacciones cambian según la intensidad: es mejor regular la emoción en los primeros escalones."},
+  {p:"¿Cuál es una estrategia adecuada para regular una emoción intensa?",
+   o:["Gritar o reprimir lo que sientes","Respirar, calmarte, tomar distancia y darte tiempo","Publicarlo en redes sociales","Desquitarte con otra persona"],
+   c:1, e:"Respirar, tomar distancia, escribir lo que sientes o hablar con alguien ayudan a regularnos."},
+  // Act 9 AA
+  {p:"En la Actividad 9 (plática de Alcohólicos Anónimos), ¿cuál es uno de los principios fundamentales de AA?",
+   o:["La competencia entre sus miembros","El anonimato","Publicar las historias de los participantes","Cobrar por cada sesión"],
+   c:1, e:"El anonimato es uno de sus principios fundamentales, junto con el apoyo entre personas que comparten experiencias."},
+  {p:"El programa de recuperación de Alcohólicos Anónimos incluye…",
+   o:["Los Doce Pasos, las Doce Tradiciones y los principios de servicio","Un tratamiento con medicamentos","Castigos para quien recae","Sólo actividades deportivas"],
+   c:0, e:"Su programa se basa en los Doce Pasos, las Doce Tradiciones y los principios de servicio."},
+  // Act 10 árbol
+  {p:"En la Actividad 10 \"El árbol de mis emociones y apoyo\", ¿qué se escribe en las RAÍCES?",
+   o:["Los logros alcanzados","Las personas que nos apoyan","Nuestros valores y fortalezas individuales, lo que nos sostiene","Las materias reprobadas"],
+   c:2, e:"Raíces: valores y fortalezas. Tronco: personas que nos apoyan. Hojas: logros y aspectos positivos a cultivar."},
+  {p:"En el árbol de mis emociones y apoyo, ¿qué representa el TRONCO?",
+   o:["Las personas significativas que nos brindan apoyo","Nuestros miedos","Lo negativo que queremos eliminar","Nuestras metas profesionales"],
+   c:0, e:"El tronco son las personas significativas que nos apoyan y nos ayudan a mantenernos firmes."},
+  // Dinámicas
+  {p:"¿Cuál era el propósito de la dinámica \"Abrazos musicales\"?",
+   o:["Ver quién baila mejor","Interactuar con diferentes personas, integrarse en equipos y reconocer las emociones que surgen","Eliminar compañeros","Aprender la letra de una canción"],
+   c:1, e:"La dinámica busca convivir con distintas personas e identificar cómo nos sentimos al hacerlo."},
+  {p:"En la dinámica \"Nudo humano\", ¿cuál era la regla principal?",
+   o:["Desenredar el nudo grupal sin soltarse de las manos","Ganar corriendo más rápido","Que el líder lo resolviera solo","Soltarse cuando fuera difícil"],
+   c:0, e:"Se debía desenredar el nudo sin soltarse, escuchándose y colaborando para encontrar una solución colectiva."},
+  {p:"En la dinámica \"Cruzar el río\", ¿cómo avanzaba el equipo?",
+   o:["Saltando lo más rápido posible cada quien por su lado","Pasando la hoja extra de atrás hacia adelante para avanzar sin pisar el suelo","Pisando el suelo cuando nadie veía","Usando una sola hoja por equipo"],
+   c:1, e:"Cada integrante tenía una hoja y el equipo una extra, que pasaban hacia adelante para avanzar juntos sin pisar el suelo."},
+  {p:"Según el cierre de \"Cruzar el río\", lograr un objetivo en equipo depende de…",
+   o:["Correr solos para llegar primero","Coordinarnos bien para que nadie se quede atrás","Que una persona tome todas las decisiones","No hablar con nadie"],
+   c:1, e:"Avanzar en equipo exige ritmo, comunicación y cuidado mutuo para que nadie se quede atrás."},
+  // Act 13 Feria
+  {p:"¿Cuál era el objetivo de la Actividad 13 \"Feria profesiográfica\"?",
+   o:["Elegir la universidad más cercana sin pensarlo","Analizar la oferta de las universidades visitantes, reconocer carreras de interés y reflexionar sobre decisiones después del bachillerato","Conseguir regalos de las universidades","Faltar a clases"],
+   c:1, e:"La actividad busca analizar la oferta educativa y reflexionar sobre tu proyecto académico y profesional."},
+  // Act 15
+  {p:"En los retos \"El transporte imposible\" y \"El equipo silencioso\" (Actividad 15), ¿qué actitud favorece la colaboración?",
+   o:["Que una sola persona haga todo","Respeto, comunicación, responsabilidad y disposición para un objetivo común","Burlarse de quien se equivoca","Competir dentro del mismo equipo"],
+   c:1, e:"Colaborar implica que todos aporten, se escuchen, se respeten y trabajen por la misma meta."},
+  {p:"En \"El equipo silencioso\", sin poder hablar, ¿qué habilidad se vuelve más importante?",
+   o:["Gritar más fuerte","Escuchar, observar y comprender a los demás mediante gestos y lenguaje corporal","Trabajar solo","Ignorar a los compañeros"],
+   c:1, e:"Sin palabras, la comunicación depende de observar, interpretar gestos y prestar atención a los demás."},
+  // Act 16
+  {p:"En la Actividad 16 \"Una decisión que puede cambiarlo todo\", ¿cuál es el mensaje principal?",
+   o:["Olvidar a los compañeros al terminar el bachillerato","Todos tenemos una historia que otros desconocen; no debemos juzgar y aún podemos decidir cómo convivir","La primera impresión siempre es correcta","Pedir disculpas es señal de debilidad"],
+   c:1, e:"No podemos cambiar el ayer, pero sí decidir cómo actuar mañana con respeto y comprensión."},
+  {p:"Según la Actividad 16, ¿qué puede impedirnos ofrecer una disculpa, reconocer un error o iniciar una conversación?",
+   o:["El orgullo","La empatía","El respeto","La amabilidad"],
+   c:0, e:"El orgullo muchas veces nos impide reconocer errores, disculparnos o acercarnos a los demás."},
+  // Act 18
+  {p:"Según la reflexión de la Actividad 18 \"Conociéndome mejor\", equivocarse es…",
+   o:["Algo que hay que evitar a toda costa","Una oportunidad para aprender","Señal de que no tengo valor","Motivo para no volver a participar"],
+   c:1, e:"No necesitamos ser perfectos para reconocer nuestro valor: equivocarse también es una oportunidad para aprender."},
+  {p:"El propósito principal de la Actividad 18 es…",
+   o:["Un ejercicio de autoconocimiento para identificar fortalezas, emociones y oportunidades para crecer","Memorizar conceptos para un examen","Comparar mis calificaciones con las de mis compañeros","Elegir a un líder de grupo"],
+   c:0, e:"Busca fortalecer la autoestima, la confianza, la empatía y la capacidad de afrontar retos mediante el autoconocimiento."},
+  // Act 20
+  {p:"En la sopa de letras de la Actividad 20 \"Valores y convivencia\", ¿cuál de estos conceptos aparecía?",
+   o:["Envidia","Perseverancia","Egoísmo","Rencor"],
+   c:1, e:"Algunos conceptos: respeto, empatía, tolerancia, inclusión, solidaridad, honestidad, perseverancia y colaboración."},
+  // Unidad 1 género
+  {p:"Según la Sesión 1 \"En busca de la equidad\", cuando las normas de género son binarias y estereotipadas, suelen provocar…",
+   o:["Más inclusión para todos","Exclusión, discriminación y violencia hacia quienes no se ajustan a ellas","Que todos se sientan seguros","Mejores calificaciones"],
+   c:1, e:"Cuestionar los estereotipos de género en nuestras acciones diarias ayuda a crear un entorno más inclusivo y seguro."},
+  // Act 21
+  {p:"En la Actividad 21, ¿a qué número se puede llamar para recibir orientación legal y apoyo psicológico (Línea de las Mujeres, gratuita y 24 horas)?",
+   o:["079, opción 1","066","123","800 de cualquier empresa"],
+   c:0, e:"La Línea de las Mujeres es el 079, opción 1. En una emergencia se llama al 911."},
+  {p:"¿Qué es la violencia VICARIA?",
+   o:["Dañar a la mujer a través de sus hijas e hijos","Dañar o quitar objetos y documentos","Controlar el dinero de la mujer","Insultos en redes sociales"],
+   c:0, e:"La violencia vicaria busca dañar a la mujer lastimando o usando a sus hijas e hijos."},
+  {p:"¿Cuál de estas conductas, que a veces se ven como \"normales\", es una señal de alerta de violencia?",
+   o:["Respetar las decisiones de tu pareja","Revisar su celular y controlar su ropa o sus amistades","Apoyarla en sus estudios","Escucharla cuando tiene un problema"],
+   c:1, e:"Celos, revisar el celular, controlar ropa o amistades, burlas o chantajes son señales de violencia."},
+  {p:"La difusión de imágenes íntimas sin consentimiento en redes sociales es violencia digital, conocida en México como…",
+   o:["Ley Olimpia","Ley Seca","Ley de Tránsito","Ley de Murphy"],
+   c:0, e:"La Ley Olimpia reconoce y sanciona la violencia digital y mediática."},
+  {p:"Si una amiga o compañera te cuenta que vive violencia, ¿qué es lo más adecuado?",
+   o:["Culparla por lo que le pasa","Contarlo en el grupo de WhatsApp","Escucharla sin juzgar y acompañarla a buscar ayuda (tutor, orientación, 079 o 911)","Decirle que no exagere"],
+   c:2, e:"Escuchar sin juzgar y acercarla a tutoría, orientación o a la Línea 079 (911 en emergencias) es la mejor forma de ayudar."}
+];
+
+/* ====== LÓGICA ====== */
+const $ = id => document.getElementById(id);
+let califFija = null, alumno = {}, orden = [], idx = 0, intentos = 0, puntos = 0,
+    primerIntento = 0, sinAcertar = 0, totalIntentos = 0, token = "", correo = "", listaAl = [], inicio = null, folio = "", enviado = false;
+
+function barajar(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function jwt(t){ const p=t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+  return JSON.parse(decodeURIComponent(atob(p).split("").map(c=>"%"+("00"+c.charCodeAt(0).toString(16)).slice(-2)).join(""))); }
+
+async function alIniciarSesion(resp){
+  if (inicio){ // ya contestó: solo renovar la sesión y reenviar
+    if (jwt(resp.credential).email.toLowerCase() !== correo){ alert("Usa la misma cuenta con la que iniciaste: "+correo); return; }
+    token = resp.credential; $("reLogin").classList.add("hidden"); $("btnEnviar").click(); return;
+  }
+  token = resp.credential; $("errReg").textContent = "Verificando tu cuenta…";
+  try{
+    const r = await (await fetch(SCRIPT_URL+"?token="+encodeURIComponent(token))).json();
+    if (!r.ok) throw new Error(r.error);
+    correo = r.correo; listaAl = r.alumnos; $("errReg").textContent = "";
+    if (r.yaEnviado){ mostrarYaEnviado(r.yaEnviado); return; }
+    const info = jwt(token);
+    $("sesion").textContent = `✅ Sesión iniciada: ${info.name || ""} (${correo})`;
+    const sel = $("alumnoSel");
+    listaAl.forEach(([c,n])=>{ const o=document.createElement("option"); o.value=c; o.textContent=n; sel.appendChild(o); });
+    $("btnGoogle").classList.add("hidden"); $("pasoAlumno").classList.remove("hidden");
+  }catch(e){ $("errReg").textContent = "No se pudo verificar tu cuenta: "+e.message; }
+}
+
+function mostrarYaEnviado(d){
+  alumno = {nombre:d.nombre, control:d.control, grupo:"5AV"}; puntos = Number(d.puntos); folio = d.folio; enviado = true;
+  $("registro").classList.add("hidden"); $("final").classList.remove("hidden");
+  $("resNombre").textContent = d.nombre; $("resCalif").textContent = Number(d.calificacion).toFixed(1);
+  $("resDetalle").textContent = "Ya habías enviado este cuestionario. Puedes volver a descargar tu constancia.";
+  $("btnEnviar").classList.add("hidden"); $("btnConstancia").classList.remove("hidden");
+  califFija = Number(d.calificacion);
+}
+
+$("alumnoSel").onchange = e => { $("control").value = e.target.value; };
+
+$("btnIniciar").onclick = () => {
+  const c = $("alumnoSel").value;
+  if (!c){ $("errReg").textContent = "Selecciona tu nombre de la lista."; return; }
+  const n = listaAl.find(x=>x[0]===c)[1];
+  if (!confirm(`¿Confirmas que eres ${n}?`)) return;
+  alumno = {nombre:n, control:c, grupo:"5AV"};
+  orden = barajar(PREGUNTAS.map((_,i)=>i));
+  inicio = new Date();
+  $("registro").classList.add("hidden");
+  $("quiz").classList.remove("hidden");
+  mostrar();
+};
+
+window.addEventListener("load", () => {
+  const tryInit = () => {
+    if (!window.google || !google.accounts){ return setTimeout(tryInit, 200); }
+    google.accounts.id.initialize({client_id:CLIENT_ID, callback:alIniciarSesion});
+    google.accounts.id.renderButton($("btnGoogle"), {theme:"filled_blue", size:"large", text:"signin_with", locale:"es"});
+  };
+  tryInit();
+});
+
+function mostrar(){
+  intentos = 0;
+  const q = PREGUNTAS[orden[idx]];
+  $("numPreg").textContent = `Pregunta ${idx+1} de ${PREGUNTAS.length}`;
+  $("progreso").style.width = (idx/PREGUNTAS.length*100)+"%";
+  $("pregunta").textContent = q.p;
+  $("retro").className = "msg hidden";
+  $("btnSig").classList.add("hidden");
+  const cont = $("opciones"); cont.innerHTML = "";
+  barajar(q.o.map((t,i)=>({t,i}))).forEach(op=>{
+    const b = document.createElement("button");
+    b.className = "opt"; b.textContent = op.t; b.dataset.i = op.i;
+    b.onclick = () => responder(b, op.i, q);
+    cont.appendChild(b);
+  });
+}
+
+function responder(btn, i, q){
+  intentos++; totalIntentos++;
+  if (i === q.c){
+    const pts = PUNTOS_INTENTO[Math.min(intentos-1, PUNTOS_INTENTO.length-1)];
+    puntos += pts; if (intentos===1) primerIntento++;
+    btn.classList.add("ok");
+    document.querySelectorAll(".opt").forEach(b=>b.disabled=true);
+    $("retro").className = "msg ok";
+    $("retro").innerHTML = `✅ ¡Correcto! +${pts} puntos.<br>${q.e}`;
+    $("puntos").textContent = "Puntos: "+puntos;
+    $("btnSig").textContent = idx === PREGUNTAS.length-1 ? "Ver resultado ➜" : "Siguiente ➜";
+    $("btnSig").classList.remove("hidden");
+  } else {
+    btn.classList.add("bad"); btn.disabled = true;
+    const quedan = PUNTOS_INTENTO.length - intentos;
+    if (quedan > 0){
+      $("retro").className = "msg bad";
+      $("retro").textContent = `❌ Esa no es la respuesta. Te ${quedan===1?"queda 1 intento":"quedan "+quedan+" intentos"}.`;
+    } else {
+      document.querySelectorAll(".opt").forEach(b=>{ b.disabled=true; if (b.dataset.i==q.c) b.classList.add("ok"); });
+      $("retro").className = "msg bad";
+      sinAcertar++;
+      $("retro").innerHTML = `❌ Se agotaron tus 3 intentos (0 puntos). La respuesta correcta está marcada en verde.<br>${q.e}`;
+      $("btnSig").textContent = idx === PREGUNTAS.length-1 ? "Ver resultado ➜" : "Siguiente ➜";
+      $("btnSig").classList.remove("hidden");
+    }
+  }
+}
+
+$("btnSig").onclick = () => { idx++; idx < PREGUNTAS.length ? mostrar() : terminar(); };
+
+function calificacion(){ if (califFija!==null) return califFija; return Math.round(puntos / (PREGUNTAS.length*PUNTOS_INTENTO[0]) * 100) / 10; }
+
+function terminar(){
+  $("progreso").style.width = "100%";
+  $("quiz").classList.add("hidden");
+  $("final").classList.remove("hidden");
+  folio = "FST-5AV-" + Date.now().toString(36).toUpperCase();
+  $("resNombre").textContent = alumno.nombre;
+  $("resCalif").textContent = calificacion().toFixed(1);
+  $("resDetalle").textContent = `${puntos} de ${PREGUNTAS.length*PUNTOS_INTENTO[0]} puntos · ${primerIntento} de ${PREGUNTAS.length} al primer intento`;
+}
+
+$("btnEnviar").onclick = async () => {
+  if (enviado) return;
+  const est = $("estadoEnvio");
+  $("btnEnviar").disabled = true; $("btnEnviar").textContent = "Enviando…";
+  const datos = {
+    token, folio, control:alumno.control,
+    materia:MATERIA, actividad:ACTIVIDAD, puntos, puntosMax:PREGUNTAS.length*PUNTOS_INTENTO[0],
+    calificacion:calificacion(), primerIntento, sinAcertar,
+    minutos: Math.round((new Date()-inicio)/60000*10)/10
+  };
+  try{
+    const r = await (await fetch(SCRIPT_URL, {method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(datos)})).json();
+    if (!r.ok) throw new Error(r.error);
+    enviado = true;
+    if (r.repetido){ folio = r.folio; puntos = Number(r.puntos); califFija = Number(r.calificacion);
+      $("resCalif").textContent = califFija.toFixed(1);
+      est.className = "msg bad"; est.textContent = "Ya habías enviado este cuestionario antes; se conserva tu primer resultado.";
+    } else {
+      est.className = "msg ok"; est.textContent = "✅ Resultados enviados al docente. Ya puedes descargar tu constancia.";
+    }
+    $("btnEnviar").textContent = "Enviado ✔";
+    $("btnConstancia").classList.remove("hidden");
+  }catch(err){
+    est.className = "msg bad";
+    est.textContent = /vencida|válida/.test(err.message)
+      ? "Tu sesión de Google venció. Inicia sesión otra vez con el botón de abajo y se enviará automáticamente."
+      : "No se pudo enviar ("+err.message+"). Revisa tu conexión e inténtalo de nuevo.";
+    $("btnEnviar").disabled = false; $("btnEnviar").textContent = "📤 Enviar al docente";
+    if (/vencida|válida/.test(err.message)){
+      $("reLogin").classList.remove("hidden");
+      google.accounts.id.renderButton($("reLogin"), {theme:"filled_blue", size:"large", text:"signin_with", locale:"es"});
+    }
+  }
+};
+
+$("btnConstancia").onclick = () => {
+  const cv = $("lienzo"), x = cv.getContext("2d"), W = cv.width, H = cv.height;
+  x.fillStyle = "#fffdfb"; x.fillRect(0,0,W,H);
+  x.strokeStyle = "#7a1f3d"; x.lineWidth = 18; x.strokeRect(30,30,W-60,H-60);
+  x.strokeStyle = "#c9a227"; x.lineWidth = 4; x.strokeRect(60,60,W-120,H-120);
+  x.textAlign = "center"; x.fillStyle = "#7a1f3d";
+  x.font = "bold 38px Georgia"; x.fillText("CENTRO DE BACHILLERATO TECNOLÓGICO", W/2, 150);
+  x.fillText("INDUSTRIAL Y DE SERVICIOS No. 187", W/2, 200);
+  x.font = "bold 90px Georgia"; x.fillStyle = "#c9a227"; x.fillText("CONSTANCIA", W/2, 330);
+  x.fillStyle = "#333"; x.font = "34px Georgia"; x.fillText("Se otorga la presente a", W/2, 420);
+  x.fillStyle = "#7a1f3d"; let fs = 64; x.font = `bold ${fs}px Georgia`;
+  while (x.measureText(alumno.nombre).width > W-260 && fs > 30){ fs -= 2; x.font = `bold ${fs}px Georgia`; }
+  x.fillText(alumno.nombre, W/2, 520);
+  x.strokeStyle = "#c9a227"; x.lineWidth = 2; x.beginPath(); x.moveTo(300,545); x.lineTo(W-300,545); x.stroke();
+  x.fillStyle = "#333"; x.font = "32px Georgia";
+  x.fillText(`del grupo ${alumno.grupo}, No. de control ${alumno.control}, por haber concluido el`, W/2, 615);
+  x.font = "bold 34px Georgia"; x.fillText(`“${ACTIVIDAD}”`, W/2, 670);
+  x.font = "32px Georgia"; x.fillText(`de la asignatura ${MATERIA},`, W/2, 722);
+  x.fillText(`obteniendo una calificación de ${calificacion().toFixed(1)} (${puntos}/${PREGUNTAS.length*PUNTOS_INTENTO[0]} puntos).`, W/2, 774);
+  const f = new Date().toLocaleDateString("es-MX",{day:"numeric",month:"long",year:"numeric"});
+  x.font = "28px Georgia"; x.fillText(`Tamazunchale, S.L.P., a ${f}.`, W/2, 845);
+  x.beginPath(); x.moveTo(W/2-260,960); x.lineTo(W/2+260,960); x.strokeStyle="#333"; x.stroke();
+  x.font = "bold 28px Georgia"; x.fillText(DOCENTE, W/2, 1000);
+  x.font = "24px Georgia"; x.fillText("Docente / Tutor", W/2, 1035);
+  x.textAlign = "right"; x.font = "20px monospace"; x.fillStyle = "#888"; x.fillText("Folio: "+folio, W-90, H-85);
+  const a = document.createElement("a");
+  a.download = `Constancia_${alumno.nombre.replace(/\s+/g,"_")}.png`;
+  a.href = cv.toDataURL("image/png"); a.click();
+};
+
+// Evita perder el avance por recargar sin querer
+window.addEventListener("beforeunload", e => { if (inicio && !enviado){ e.preventDefault(); e.returnValue = ""; } });
+</script>
+</body>
+</html>
